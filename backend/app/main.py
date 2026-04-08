@@ -4,11 +4,12 @@ import logging
 import time
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import Base, async_session, engine
+from app.database import Base, async_session, engine, get_db
 from app.routers.notes import router as notes_router
 from app.routers.notes import summary_router
 from app.routers.patients import router as patients_router
@@ -61,11 +62,10 @@ async def log_requests(request: Request, call_next):
 
 
 @app.get("/health", summary="Health check", tags=["system"])
-async def health_check():
+async def health_check(db: AsyncSession = Depends(get_db)):
     """Returns service health status including database connectivity."""
     try:
-        async with async_session() as session:
-            await session.execute(text("SELECT 1"))
+        await db.execute(text("SELECT 1"))
         return {"status": "ok", "database": "connected"}
     except Exception:
         return {"status": "degraded", "database": "disconnected"}
